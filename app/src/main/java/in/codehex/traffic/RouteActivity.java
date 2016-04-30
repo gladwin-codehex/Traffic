@@ -125,7 +125,7 @@ public class RouteActivity extends AppCompatActivity {
                     public void onResponse(String response) {
                         hideProgressDialog();
                         mDirection = response;
-                        processRoute();
+                        getUsersLocation();
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -139,9 +139,9 @@ public class RouteActivity extends AppCompatActivity {
     }
 
     /**
-     * Process the directions and select the best route and organize the other routes.
+     * Get the location of all the users.
      */
-    void processRoute() {
+    void getUsersLocation() {
         showProgressDialog();
         StringRequest strReq = new StringRequest(Request.Method.POST,
                 Config.URL_API, new Response.Listener<String>() {
@@ -154,8 +154,9 @@ public class RouteActivity extends AppCompatActivity {
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject object = array.getJSONObject(i);
                         double lat, lng;
-                        //    lat = object.getDouble("lat");
-                        //   lng = object.getDouble("lng");
+                        lat = object.getDouble("lat");
+                        lng = object.getDouble("lng");
+                        mVehicleItemList.add(new VehicleItem(lat, lng));
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -166,7 +167,7 @@ public class RouteActivity extends AppCompatActivity {
             @Override
             public void onErrorResponse(VolleyError error) {
                 hideProgressDialog();
-                processRoute();
+                getUsersLocation();
                 Toast.makeText(getApplicationContext(),
                         "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
@@ -174,7 +175,7 @@ public class RouteActivity extends AppCompatActivity {
 
             @Override
             protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<String, String>();
+                Map<String, String> params = new HashMap<>();
                 params.put("tag", "traffic");
                 params.put("phone", mPhone);
 
