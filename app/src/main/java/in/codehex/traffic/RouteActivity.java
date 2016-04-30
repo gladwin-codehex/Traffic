@@ -1,8 +1,5 @@
 package in.codehex.traffic;
 
-import com.google.android.gms.maps.model.LatLng;
-import com.google.maps.android.PolyUtil;
-
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -26,7 +23,6 @@ import android.widget.Toast;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +30,7 @@ import java.util.Map;
 import in.codehex.traffic.app.AppController;
 import in.codehex.traffic.app.Config;
 import in.codehex.traffic.model.RouteItem;
+import in.codehex.traffic.model.VehicleItem;
 
 public class RouteActivity extends AppCompatActivity {
 
@@ -46,6 +43,7 @@ public class RouteActivity extends AppCompatActivity {
     Intent mIntent;
     List<String> mRouteList;
     List<RouteItem> mRouteItemList;
+    List<VehicleItem> mVehicleItemList;
     String[] mPoint = new String[100];
     int[] mWeight = new int[100];
     int mTraffic, mPosition, mDistance;
@@ -72,6 +70,7 @@ public class RouteActivity extends AppCompatActivity {
         userPreferences = getSharedPreferences(Config.PREF_USER, MODE_PRIVATE);
         mRouteList = new ArrayList<>();
         mRouteItemList = new ArrayList<>();
+        mVehicleItemList = new ArrayList<>();
         spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mRouteList);
     }
 
@@ -157,28 +156,6 @@ public class RouteActivity extends AppCompatActivity {
                         double lat, lng;
                         lat = object.getDouble("lat");
                         lng = object.getDouble("lng");
-                        LatLng latLng = new LatLng(lat, lng);
-                        for (int j = 0; j < 100; j++) {
-                            if (mPoint[j] != null) {
-                                List<LatLng> decodedPath = PolyUtil.decode(mPoint[j]);
-                                if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
-                                    mWeight[j] += object.getInt("weight");
-                            }
-                        }
-                    }
-
-                    if (mWeight[0] <= mTraffic) {
-                        mPosition = 0;
-                    } else {
-                        int[] temp = new int[100];
-                        for (int w = 0; w < mWeight.length; w++)
-                            temp[w] = mWeight[w];
-                        Arrays.sort(temp);
-                        for (int t = 0; t < mWeight.length; t++) {
-                            if (mWeight[t] == temp[0]) {
-                                mPosition = t;
-                            }
-                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
