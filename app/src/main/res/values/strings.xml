@@ -1,3 +1,28 @@
 <resources>
     <string name="app_name">Traffic</string>
+
+    <string name="title_activity_login">Login</string>
+    <string name="title_activity_route">Route</string>
+    <string name="title_activity_map">Route</string>
+
+    <string name="error_phone">Phone no is invalid</string>
+
+    <string name="phone">Phone</string>
+    <string name="source">Source</string>
+    <string name="destination">Destination</string>
+    <string name="traffic">Traffic Intensity</string>
+    <string name="set">Set</string>
+    <string name="default_traffic">2</string>
+    <string name="alternate_route">All Routes</string>
+    <string name="distance">Distance</string>
+    <string name="default_distance">500</string>
+
+    <string name="prompt_route">Select Route</string>
+    <string name="prompt_vehicle">Choose a vehicle</string>
+
+    <string-array name="entries_vehicle">
+        <item>Bike</item>
+        <item>Car</item>
+        <item>Truck</item>
+    </string-array>
 </resources>
