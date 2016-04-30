@@ -106,10 +106,11 @@ public class RouteActivity extends AppCompatActivity {
             public void onClick(View v) {
                 int mPos = spinRoute.getSelectedItemPosition();
                 int weight = mRoute[mPos];
-                mPosition = Arrays.asList(mWeight).indexOf(weight);
-                mIntent = new Intent(RouteActivity.this, MapActivity.class);
-                mIntent.putExtra("position", mPosition);
-                startActivity(mIntent);
+                mPosition = Arrays.binarySearch(mWeight, weight);
+                Toast.makeText(RouteActivity.this, String.valueOf(mPosition), Toast.LENGTH_SHORT).show();
+                //    mIntent = new Intent(RouteActivity.this, MapActivity.class);
+                //     mIntent.putExtra("position", mPosition);
+                //   startActivity(mIntent);
             }
         });
         getDirections();
