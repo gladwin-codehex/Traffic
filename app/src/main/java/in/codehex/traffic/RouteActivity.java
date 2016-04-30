@@ -34,7 +34,6 @@ import java.util.Map;
 
 import in.codehex.traffic.app.AppController;
 import in.codehex.traffic.app.Config;
-import in.codehex.traffic.model.RouteItem;
 import in.codehex.traffic.model.StepItem;
 import in.codehex.traffic.model.VehicleItem;
 
@@ -48,7 +47,6 @@ public class RouteActivity extends AppCompatActivity {
     ProgressDialog mProgressDialog;
     Intent mIntent;
     List<String> mRouteList;
-    List<RouteItem> mRouteItemList;
     List<VehicleItem> mVehicleItemList;
     List<StepItem> mStepItemList;
     int[] mWeight = new int[100];
@@ -76,7 +74,6 @@ public class RouteActivity extends AppCompatActivity {
         mProgressDialog = new ProgressDialog(this);
         userPreferences = getSharedPreferences(Config.PREF_USER, MODE_PRIVATE);
         mRouteList = new ArrayList<>();
-        mRouteItemList = new ArrayList<>();
         mVehicleItemList = new ArrayList<>();
         mStepItemList = new ArrayList<>();
         spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mRouteList);
@@ -124,6 +121,7 @@ public class RouteActivity extends AppCompatActivity {
             url = Config.URL_API_MAP + "origin=" + URLEncoder.encode(mSource, "utf-8")
                     + "&destination=" + URLEncoder.encode(mDestination, "utf-8")
                     + "&alternatives=true&key=" + Config.API_BROWSER_KEY;
+            System.out.println(url);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -211,13 +209,17 @@ public class RouteActivity extends AppCompatActivity {
                 JSONObject legObject = legs.getJSONObject(0);
                 JSONArray steps = legObject.getJSONArray("steps");
                 int temp = 0;
+                boolean isDistance = true;
                 for (int j = 0; j < steps.length(); j++) {
-                    JSONObject distance = steps.getJSONObject(j);
-                    int value = distance.getInt("value");
-                    temp += value;
-                    if (temp > mDistance) {
-                        mStepItemList.add(new StepItem(i, j));
-                        break;
+                    if (isDistance) {
+                        JSONObject step = steps.getJSONObject(j);
+                        JSONObject distance = step.getJSONObject("distance");
+                        int value = distance.getInt("value");
+                        temp += value;
+                        if (temp > mDistance) {
+                            mStepItemList.add(new StepItem(i, j));
+                            isDistance = false;
+                        }
                     }
                 }
                 processTraffic();
@@ -241,17 +243,16 @@ public class RouteActivity extends AppCompatActivity {
                     try {
                         JSONObject jsonObject = new JSONObject(mDirection);
                         JSONArray routes = jsonObject.getJSONArray("routes");
-                        for (int p = 0; p < routes.length(); p++) {
-                            JSONObject object = routes.getJSONObject(p);
-                            JSONArray legs = object.getJSONArray("legs");
-                            JSONObject legObject = legs.getJSONObject(0);
-                            JSONArray steps = legObject.getJSONArray("steps");
-                            JSONObject polylineObject = steps.getJSONObject(j);
-                            String polyline = polylineObject.getString("points");
-                            List<LatLng> decodedPath = PolyUtil.decode(polyline);
-                            if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
-                                mWeight[i] += weight;
-                        }
+                        JSONObject object = routes.getJSONObject(i);
+                        JSONArray legs = object.getJSONArray("legs");
+                        JSONObject legObject = legs.getJSONObject(0);
+                        JSONArray steps = legObject.getJSONArray("steps");
+                        JSONObject polylineObject = steps.getJSONObject(j);
+                        JSONObject polyline = polylineObject.getJSONObject("polyline");
+                        String points = polyline.getString("points");
+                        List<LatLng> decodedPath = PolyUtil.decode(points);
+                        if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
+                            mWeight[i] += weight;
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -267,9 +268,11 @@ public class RouteActivity extends AppCompatActivity {
      */
     void processRoutes() {
         System.arraycopy(mWeight, 0, mRoute, 0, 100);
+        Toast.makeText(getApplicationContext(), Arrays.toString(mStepItemList.toArray()), Toast.LENGTH_LONG).show();
         Arrays.sort(mRoute);
         for (int i = 0; i < mStepItemList.size(); i++)
             spinnerAdapter.add("Route " + (i + 1));
+        spinnerAdapter.notifyDataSetChanged();
     }
 
     /**
