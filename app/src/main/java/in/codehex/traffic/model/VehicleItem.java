@@ -6,10 +6,12 @@ package in.codehex.traffic.model;
 public class VehicleItem {
 
     private double lat, lng;
+    private int weight;
 
-    public VehicleItem(double lat, double lng) {
+    public VehicleItem(double lat, double lng, int weight) {
         this.lat = lat;
         this.lng = lng;
+        this.weight = weight;
     }
 
     public double getLat() {
@@ -26,5 +28,13 @@ public class VehicleItem {
 
     public void setLng(double lng) {
         this.lng = lng;
+    }
+
+    public int getWeight() {
+        return weight;
+    }
+
+    public void setWeight(int weight) {
+        this.weight = weight;
     }
 }

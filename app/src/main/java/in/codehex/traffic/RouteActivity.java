@@ -1,11 +1,15 @@
 package in.codehex.traffic;
 
+import com.google.android.gms.maps.model.LatLng;
+import com.google.maps.android.PolyUtil;
+
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.ProgressDialog;
@@ -23,6 +27,7 @@ import android.widget.Toast;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +35,7 @@ import java.util.Map;
 import in.codehex.traffic.app.AppController;
 import in.codehex.traffic.app.Config;
 import in.codehex.traffic.model.RouteItem;
+import in.codehex.traffic.model.StepItem;
 import in.codehex.traffic.model.VehicleItem;
 
 public class RouteActivity extends AppCompatActivity {
@@ -44,8 +50,9 @@ public class RouteActivity extends AppCompatActivity {
     List<String> mRouteList;
     List<RouteItem> mRouteItemList;
     List<VehicleItem> mVehicleItemList;
-    String[] mPoint = new String[100];
+    List<StepItem> mStepItemList;
     int[] mWeight = new int[100];
+    int[] mRoute = new int[100];
     int mTraffic, mPosition, mDistance;
     String mSource, mDestination, mPhone, mDirection;
 
@@ -71,6 +78,7 @@ public class RouteActivity extends AppCompatActivity {
         mRouteList = new ArrayList<>();
         mRouteItemList = new ArrayList<>();
         mVehicleItemList = new ArrayList<>();
+        mStepItemList = new ArrayList<>();
         spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mRouteList);
     }
 
@@ -139,7 +147,7 @@ public class RouteActivity extends AppCompatActivity {
     }
 
     /**
-     * Get the location of all the users.
+     * Get the location of all the users from the user.
      */
     void getUsersLocation() {
         showProgressDialog();
@@ -154,10 +162,13 @@ public class RouteActivity extends AppCompatActivity {
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject object = array.getJSONObject(i);
                         double lat, lng;
+                        int weight;
                         lat = object.getDouble("lat");
                         lng = object.getDouble("lng");
-                        mVehicleItemList.add(new VehicleItem(lat, lng));
+                        weight = object.getInt("weight");
+                        mVehicleItemList.add(new VehicleItem(lat, lng, weight));
                     }
+                    processSteps();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -185,6 +196,80 @@ public class RouteActivity extends AppCompatActivity {
         };
 
         AppController.getInstance().addToRequestQueue(strReq, "routes");
+    }
+
+    /**
+     * Process the steps obtained in the google maps api.
+     */
+    void processSteps() {
+        try {
+            JSONObject jsonObject = new JSONObject(mDirection);
+            JSONArray routes = jsonObject.getJSONArray("routes");
+            for (int i = 0; i < routes.length(); i++) {
+                JSONObject object = routes.getJSONObject(i);
+                JSONArray legs = object.getJSONArray("legs");
+                JSONObject legObject = legs.getJSONObject(0);
+                JSONArray steps = legObject.getJSONArray("steps");
+                int temp = 0;
+                for (int j = 0; j < steps.length(); j++) {
+                    JSONObject distance = steps.getJSONObject(j);
+                    int value = distance.getInt("value");
+                    temp += value;
+                    if (temp > mDistance) {
+                        mStepItemList.add(new StepItem(i, j));
+                        break;
+                    }
+                }
+                processTraffic();
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Process the traffic intensity for the given distance in all the routes.
+     */
+    void processTraffic() {
+        for (int i = 0; i < mStepItemList.size(); i++) {
+            for (int j = 0; j < mStepItemList.get(i).getStep(); j++) {
+                for (int k = 0; k < mVehicleItemList.size(); k++) {
+                    double lat = mVehicleItemList.get(k).getLat();
+                    double lng = mVehicleItemList.get(k).getLng();
+                    int weight = mVehicleItemList.get(k).getWeight();
+                    LatLng latLng = new LatLng(lat, lng);
+                    try {
+                        JSONObject jsonObject = new JSONObject(mDirection);
+                        JSONArray routes = jsonObject.getJSONArray("routes");
+                        for (int p = 0; p < routes.length(); p++) {
+                            JSONObject object = routes.getJSONObject(p);
+                            JSONArray legs = object.getJSONArray("legs");
+                            JSONObject legObject = legs.getJSONObject(0);
+                            JSONArray steps = legObject.getJSONArray("steps");
+                            JSONObject polylineObject = steps.getJSONObject(j);
+                            String polyline = polylineObject.getString("points");
+                            List<LatLng> decodedPath = PolyUtil.decode(polyline);
+                            if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
+                                mWeight[i] += weight;
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        processRoutes();
+    }
+
+    /**
+     * Determine the best routes and arrange them in the ascending order and then
+     * add them to the spinner.
+     */
+    void processRoutes() {
+        System.arraycopy(mWeight, 0, mRoute, 0, 100);
+        Arrays.sort(mRoute);
+        for (int i = 0; i < mStepItemList.size(); i++)
+            spinnerAdapter.add("Route " + (i + 1));
     }
 
     /**
