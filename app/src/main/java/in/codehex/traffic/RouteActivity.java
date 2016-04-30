@@ -1,9 +1,15 @@
 package in.codehex.traffic;
 
+import com.google.android.gms.maps.model.LatLng;
+import com.google.maps.android.PolyUtil;
+
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -12,16 +18,22 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import in.codehex.traffic.app.AppController;
 import in.codehex.traffic.app.Config;
+import in.codehex.traffic.model.RouteItem;
 
 public class RouteActivity extends AppCompatActivity {
 
@@ -32,7 +44,8 @@ public class RouteActivity extends AppCompatActivity {
     ArrayAdapter<String> spinnerAdapter;
     ProgressDialog mProgressDialog;
     Intent mIntent;
-    List<String> routeList;
+    List<String> mRouteList;
+    List<RouteItem> mRouteItemList;
     String[] mPoint = new String[100];
     int[] mWeight = new int[100];
     int mTraffic, mPosition, mDistance;
@@ -57,8 +70,9 @@ public class RouteActivity extends AppCompatActivity {
 
         mProgressDialog = new ProgressDialog(this);
         userPreferences = getSharedPreferences(Config.PREF_USER, MODE_PRIVATE);
-        routeList = new ArrayList<>();
-        spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, routeList);
+        mRouteList = new ArrayList<>();
+        mRouteItemList = new ArrayList<>();
+        spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mRouteList);
     }
 
     /**
@@ -82,6 +96,15 @@ public class RouteActivity extends AppCompatActivity {
         mDestination = getIntent().getStringExtra("destination");
         mTraffic = Integer.parseInt(getIntent().getStringExtra("traffic"));
         mDistance = Integer.parseInt(getIntent().getStringExtra("distance"));
+
+        buttonSubmit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mIntent = new Intent(RouteActivity.this, MapActivity.class);
+                startActivity(mIntent);
+            }
+        });
+        getDirections();
     }
 
     /**
@@ -120,7 +143,70 @@ public class RouteActivity extends AppCompatActivity {
      * Process the directions and select the best route and organize the other routes.
      */
     void processRoute() {
+        showProgressDialog();
+        StringRequest strReq = new StringRequest(Request.Method.POST,
+                Config.URL_API, new Response.Listener<String>() {
 
+            @Override
+            public void onResponse(String response) {
+                hideProgressDialog();
+                try {
+                    JSONArray array = new JSONArray(response);
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject object = array.getJSONObject(i);
+                        double lat, lng;
+                        lat = object.getDouble("lat");
+                        lng = object.getDouble("lng");
+                        LatLng latLng = new LatLng(lat, lng);
+                        for (int j = 0; j < 100; j++) {
+                            if (mPoint[j] != null) {
+                                List<LatLng> decodedPath = PolyUtil.decode(mPoint[j]);
+                                if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
+                                    mWeight[j] += object.getInt("weight");
+                            }
+                        }
+                    }
+
+                    if (mWeight[0] <= mTraffic) {
+                        mPosition = 0;
+                    } else {
+                        int[] temp = new int[100];
+                        for (int w = 0; w < mWeight.length; w++)
+                            temp[w] = mWeight[w];
+                        Arrays.sort(temp);
+                        for (int t = 0; t < mWeight.length; t++) {
+                            if (mWeight[t] == temp[0]) {
+                                mPosition = t;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                hideProgressDialog();
+                processRoute();
+                Toast.makeText(getApplicationContext(),
+                        "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("tag", "traffic");
+                params.put("phone", mPhone);
+
+                return params;
+            }
+
+        };
+
+        AppController.getInstance().addToRequestQueue(strReq, "routes");
     }
 
     /**
@@ -133,7 +219,7 @@ public class RouteActivity extends AppCompatActivity {
     }
 
     /**
-     * Hide progress bar if it being displayed.
+     * Hide progress bar if it is being displayed.
      */
     void hideProgressDialog() {
         if (mProgressDialog.isShowing()) {

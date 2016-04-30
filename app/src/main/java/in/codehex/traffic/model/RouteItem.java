@@ -17,7 +17,15 @@ public class RouteItem {
         return route;
     }
 
+    public void setRoute(String route) {
+        this.route = route;
+    }
+
     public int getPoint() {
-        return
+        return point;
+    }
+
+    public void setPoint(int point) {
+        this.point = point;
     }
 }
