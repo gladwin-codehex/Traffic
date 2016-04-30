@@ -154,8 +154,8 @@ public class RouteActivity extends AppCompatActivity {
                     for (int i = 0; i < array.length(); i++) {
                         JSONObject object = array.getJSONObject(i);
                         double lat, lng;
-                        lat = object.getDouble("lat");
-                        lng = object.getDouble("lng");
+                        //    lat = object.getDouble("lat");
+                        //   lng = object.getDouble("lng");
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
