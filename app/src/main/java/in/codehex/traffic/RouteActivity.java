@@ -104,7 +104,11 @@ public class RouteActivity extends AppCompatActivity {
         buttonSubmit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                int mPos = spinRoute.getSelectedItemPosition();
+                int weight = mRoute[mPos];
+                mPosition = Arrays.asList(mWeight).indexOf(weight);
                 mIntent = new Intent(RouteActivity.this, MapActivity.class);
+                mIntent.putExtra("position", mPosition);
                 startActivity(mIntent);
             }
         });
@@ -121,7 +125,6 @@ public class RouteActivity extends AppCompatActivity {
             url = Config.URL_API_MAP + "origin=" + URLEncoder.encode(mSource, "utf-8")
                     + "&destination=" + URLEncoder.encode(mDestination, "utf-8")
                     + "&alternatives=true&key=" + Config.API_BROWSER_KEY;
-            System.out.println(url);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -145,7 +148,7 @@ public class RouteActivity extends AppCompatActivity {
     }
 
     /**
-     * Get the location of all the users from the user.
+     * Get the location of all the users from the database.
      */
     void getUsersLocation() {
         showProgressDialog();
@@ -222,8 +225,8 @@ public class RouteActivity extends AppCompatActivity {
                         }
                     }
                 }
-                processTraffic();
             }
+            processTraffic();
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -268,7 +271,7 @@ public class RouteActivity extends AppCompatActivity {
      */
     void processRoutes() {
         System.arraycopy(mWeight, 0, mRoute, 0, 100);
-        Toast.makeText(getApplicationContext(), Arrays.toString(mStepItemList.toArray()), Toast.LENGTH_LONG).show();
+
         Arrays.sort(mRoute);
         for (int i = 0; i < mStepItemList.size(); i++)
             spinnerAdapter.add("Route " + (i + 1));
