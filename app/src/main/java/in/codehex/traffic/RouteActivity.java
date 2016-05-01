@@ -27,7 +27,7 @@ import android.widget.Toast;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,8 +49,7 @@ public class RouteActivity extends AppCompatActivity {
     List<String> mRouteList;
     List<VehicleItem> mVehicleItemList;
     List<StepItem> mStepItemList;
-    int[] mWeight = new int[100];
-    int[] mRoute = new int[100];
+    List<Integer> mWeight, mRoute, mIndexes;
     int mTraffic, mPosition, mDistance;
     String mSource, mDestination, mPhone, mDirection;
 
@@ -76,7 +75,11 @@ public class RouteActivity extends AppCompatActivity {
         mRouteList = new ArrayList<>();
         mVehicleItemList = new ArrayList<>();
         mStepItemList = new ArrayList<>();
-        spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mRouteList);
+        mWeight = new ArrayList<>();
+        mRoute = new ArrayList<>();
+        mIndexes = new ArrayList<>();
+        spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item,
+                mRouteList);
     }
 
     /**
@@ -105,12 +108,10 @@ public class RouteActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 int mPos = spinRoute.getSelectedItemPosition();
-                int weight = mRoute[mPos];
-                mPosition = Arrays.binarySearch(mWeight, weight);
-                Toast.makeText(RouteActivity.this, String.valueOf(mPosition), Toast.LENGTH_SHORT).show();
-                //    mIntent = new Intent(RouteActivity.this, MapActivity.class);
-                //     mIntent.putExtra("position", mPosition);
-                //   startActivity(mIntent);
+                mPosition = mIndexes.get(mPos);
+                mIntent = new Intent(RouteActivity.this, MapActivity.class);
+                mIntent.putExtra("position", mPosition);
+                startActivity(mIntent);
             }
         });
         getDirections();
@@ -158,7 +159,6 @@ public class RouteActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(String response) {
-                hideProgressDialog();
                 try {
                     JSONArray array = new JSONArray(response);
                     for (int i = 0; i < array.length(); i++) {
@@ -179,7 +179,6 @@ public class RouteActivity extends AppCompatActivity {
 
             @Override
             public void onErrorResponse(VolleyError error) {
-                hideProgressDialog();
                 getUsersLocation();
                 Toast.makeText(getApplicationContext(),
                         "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
@@ -238,6 +237,7 @@ public class RouteActivity extends AppCompatActivity {
      */
     void processTraffic() {
         for (int i = 0; i < mStepItemList.size(); i++) {
+            int temp = 0;
             for (int j = 0; j < mStepItemList.get(i).getStep(); j++) {
                 for (int k = 0; k < mVehicleItemList.size(); k++) {
                     double lat = mVehicleItemList.get(k).getLat();
@@ -256,12 +256,13 @@ public class RouteActivity extends AppCompatActivity {
                         String points = polyline.getString("points");
                         List<LatLng> decodedPath = PolyUtil.decode(points);
                         if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
-                            mWeight[i] += weight;
+                            temp += weight;
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
                 }
             }
+            mWeight.add(i, temp);
         }
         processRoutes();
     }
@@ -271,12 +272,26 @@ public class RouteActivity extends AppCompatActivity {
      * add them to the spinner.
      */
     void processRoutes() {
-        System.arraycopy(mWeight, 0, mRoute, 0, 100);
-
-        Arrays.sort(mRoute);
-        for (int i = 0; i < mStepItemList.size(); i++)
+        mRoute.addAll(mWeight);
+        Collections.sort(mRoute);
+        for (int i = 0; i < mStepItemList.size(); i++) {
             spinnerAdapter.add("Route " + (i + 1));
+        }
+        for (int number : mWeight) {
+            for (int i = 0; i < mRoute.size(); i++) {
+                int sortedNumber = mRoute.get(i);
+                if (number == sortedNumber) {
+                    if (mIndexes.contains(i)) {
+                        continue;
+                    } else {
+                        mIndexes.add(i);
+                        break;
+                    }
+                }
+            }
+        }
         spinnerAdapter.notifyDataSetChanged();
+        hideProgressDialog();
     }
 
     /**
