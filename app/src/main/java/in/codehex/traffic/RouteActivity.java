@@ -280,7 +280,9 @@ public class RouteActivity extends AppCompatActivity {
         mRoute.addAll(mWeight);
         Collections.sort(mRoute);
         for (int i = 0; i < mStepItemList.size(); i++) {
-            spinnerAdapter.add("Route " + (i + 1));
+            if (i == 0)
+                spinnerAdapter.add("Route " + (i + 1) + " (Best Route)");
+            else spinnerAdapter.add("Route " + (i + 1));
         }
         for (int number : mWeight) {
             for (int i = 0; i < mRoute.size(); i++) {
