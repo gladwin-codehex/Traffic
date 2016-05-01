@@ -111,6 +111,11 @@ public class RouteActivity extends AppCompatActivity {
                 mPosition = mIndexes.get(mPos);
                 mIntent = new Intent(RouteActivity.this, MapActivity.class);
                 mIntent.putExtra("position", mPosition);
+                mIntent.putExtra("direction", mDirection);
+                mIntent.putExtra("source", mSource);
+                mIntent.putExtra("destination", mDestination);
+                mIntent.putExtra("phone", mPhone);
+                mIntent.putExtra("step", mStepItemList.get(mPosition).getStep());
                 startActivity(mIntent);
             }
         });
@@ -281,9 +286,7 @@ public class RouteActivity extends AppCompatActivity {
             for (int i = 0; i < mRoute.size(); i++) {
                 int sortedNumber = mRoute.get(i);
                 if (number == sortedNumber) {
-                    if (mIndexes.contains(i)) {
-                        continue;
-                    } else {
+                    if (!mIndexes.contains(i)) {
                         mIndexes.add(i);
                         break;
                     }

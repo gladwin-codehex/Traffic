@@ -42,6 +42,7 @@
                     android:layout_height="wrap_content"
                     android:hint="@string/source"
                     android:inputType="textPostalAddress"/>
+
         </android.support.design.widget.TextInputLayout>
 
         <android.support.design.widget.TextInputLayout
@@ -55,6 +56,7 @@
                     android:layout_height="wrap_content"
                     android:hint="@string/destination"
                     android:inputType="textPostalAddress"/>
+
         </android.support.design.widget.TextInputLayout>
 
         <android.support.design.widget.TextInputLayout
@@ -70,6 +72,7 @@
                     android:inputType="numberDecimal"
                     android:maxLength="3"
                     android:text="@string/default_traffic"/>
+
         </android.support.design.widget.TextInputLayout>
 
         <android.support.design.widget.TextInputLayout
@@ -85,6 +88,7 @@
                     android:inputType="numberDecimal"
                     android:maxLength="4"
                     android:text="@string/default_distance"/>
+
         </android.support.design.widget.TextInputLayout>
 
         <android.support.design.widget.FloatingActionButton
