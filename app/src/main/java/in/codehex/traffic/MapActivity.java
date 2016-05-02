@@ -207,7 +207,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             JSONArray legs = routes.getJSONArray("legs");
             JSONObject object = legs.getJSONObject(0);
             JSONArray steps = object.getJSONArray("steps");
-            trafficItemList.add(new TrafficItem("Segment", "Bike", "Car", "Truck", "Speed"));
+            trafficItemList.add(new TrafficItem("Path", "Bike", "Car", "Truck", "Speed"));
             mAdapter.notifyDataSetChanged();
             int segment = 0;
 
