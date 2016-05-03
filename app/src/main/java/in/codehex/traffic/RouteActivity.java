@@ -22,7 +22,6 @@ import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
-import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -132,6 +131,7 @@ public class RouteActivity extends AppCompatActivity {
             url = Config.URL_API_MAP + "origin=" + URLEncoder.encode(mSource, "utf-8")
                     + "&destination=" + URLEncoder.encode(mDestination, "utf-8")
                     + "&alternatives=true&key=" + Config.API_BROWSER_KEY;
+            System.out.println(url);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -185,8 +185,7 @@ public class RouteActivity extends AppCompatActivity {
             @Override
             public void onErrorResponse(VolleyError error) {
                 getUsersLocation();
-                Toast.makeText(getApplicationContext(),
-                        "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                System.out.println(error.getMessage());
             }
         }) {
 
@@ -260,7 +259,7 @@ public class RouteActivity extends AppCompatActivity {
                         JSONObject polyline = polylineObject.getJSONObject("polyline");
                         String points = polyline.getString("points");
                         List<LatLng> decodedPath = PolyUtil.decode(points);
-                        if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10))
+                        if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 20))
                             temp += weight;
                     } catch (JSONException e) {
                         e.printStackTrace();

@@ -185,8 +185,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onErrorResponse(VolleyError error) {
                 hideProgressDialog();
-                Toast.makeText(getApplicationContext(),
-                        "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                System.out.println(error.getMessage());
             }
         }) {
 

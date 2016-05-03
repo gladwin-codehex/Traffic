@@ -1,5 +1,11 @@
 package in.codehex.traffic;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -20,12 +26,19 @@ import org.json.JSONObject;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -47,15 +60,22 @@ import in.codehex.traffic.app.Config;
 import in.codehex.traffic.model.TrafficItem;
 import in.codehex.traffic.model.VehicleItem;
 
-public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class MapActivity extends AppCompatActivity implements OnMapReadyCallback,
+        LocationListener, GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener {
 
     Toolbar mToolbar;
     RecyclerView mRecyclerView;
     MapRecyclerViewAdapter mAdapter;
     List<VehicleItem> mVehicleItemList;
+    GoogleApiClient mGoogleApiClient;
+    Location location;
+    LocationRequest mLocationRequest;
+    double mLat, mLng;
     List<TrafficItem> trafficItemList;
     ProgressDialog mProgressDialog;
     LinearLayoutManager mLinearLayoutManager;
+    Intent mIntent;
     String mDirection, mSource, mDestination, mPhone;
     int mPosition, mStep;
 
@@ -115,6 +135,60 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         }
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (mGoogleApiClient != null)
+            if (!mGoogleApiClient.isConnected())
+                mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (mGoogleApiClient != null)
+            if (mGoogleApiClient.isConnected())
+                mGoogleApiClient.disconnect();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mGoogleApiClient != null)
+            if (mGoogleApiClient.isConnected())
+                stopLocationUpdates();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mGoogleApiClient != null)
+            if (mGoogleApiClient.isConnected())
+                startLocationUpdates();
+    }
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        startLocationUpdates();
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+    }
+
+    @Override
+    public void onLocationChanged(Location loc) {
+        location = loc;
+        mLat = location.getLatitude();
+        mLng = location.getLongitude();
+        updateLocation();
+    }
+
     /**
      * Initialize the objects.
      */
@@ -158,6 +232,163 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         mRecyclerView.setAdapter(mAdapter);
 
         getUsersLocation();
+
+        if (checkPlayServices())
+            buildGoogleApiClient();
+
+        createLocationRequest();
+
+        if (!isGPSEnabled(getApplicationContext()))
+            showAlertGPS();
+    }
+
+
+    /**
+     * Initializes and implements location request object.
+     */
+    private void createLocationRequest() {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(Config.INTERVAL);
+        mLocationRequest.setFastestInterval(Config.FASTEST_INTERVAL);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    }
+
+    /**
+     * Initializes the google api client.
+     */
+    synchronized void buildGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
+    }
+
+    /**
+     * Checks for the availability of google play services functionality.
+     *
+     * @return true if play services is enabled else false
+     */
+    boolean checkPlayServices() {
+        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+        int resultCode = googleApiAvailability
+                .isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (googleApiAvailability.isUserResolvableError(resultCode)) {
+                googleApiAvailability.getErrorDialog(this, resultCode,
+                        Config.REQUEST_PLAY_SERVICES).show();
+            } else {
+                Toast.makeText(getApplicationContext(),
+                        "This device is not supported.", Toast.LENGTH_LONG).show();
+                finish();
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * display an alert to notify the user that GPS has to be enabled
+     */
+    void showAlertGPS() {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
+        alertDialog.setTitle("Enable GPS");
+        alertDialog.setMessage("GPS service is not enabled." +
+                " Do you want to go to location settings?");
+        alertDialog.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                mIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                startActivity(mIntent);
+            }
+        });
+        alertDialog.show();
+    }
+
+    /**
+     * @param context context of the MainActivity class
+     * @return true if GPS is enabled else false
+     */
+    boolean isGPSEnabled(Context context) {
+        LocationManager locationManager = (LocationManager)
+                context.getSystemService(Context.LOCATION_SERVICE);
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+    }
+
+    /**
+     * Start receiving location updates.
+     */
+    void startLocationUpdates() {
+        // marshmallow runtime location permission
+        if (ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED) {
+            LocationServices.FusedLocationApi
+                    .requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+        } else if (ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                    Config.PERMISSION_REQUEST_CODE);
+        }
+    }
+
+    /**
+     * Stop receiving location updates.
+     */
+    void stopLocationUpdates() {
+        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+    }
+
+    /**
+     * Update the current location of the user.
+     */
+    void updateLocation() {
+        // volley string request to server with POST parameters
+        StringRequest strReq = new StringRequest(Request.Method.POST,
+                Config.URL_API, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                // parsing json response data
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    // int error = jObj.getInt("error");
+                    String message = jObj.getString("message");
+
+                   /* Toast.makeText(getApplicationContext(),
+                            message, Toast.LENGTH_SHORT).show();*/
+                    System.out.println(message);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                System.out.println(error.getMessage());
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to the register url
+                Map<String, String> params = new HashMap<>();
+                params.put("tag", "gps");
+                params.put("phone", mPhone);
+                params.put("lat", String.valueOf(mLat));
+                params.put("lng", String.valueOf(mLng));
+
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, "update_location");
     }
 
     /**
@@ -177,8 +408,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             @Override
             public void onErrorResponse(VolleyError error) {
                 getUsersLocation();
-                Toast.makeText(getApplicationContext(),
-                        "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                System.out.println(error.getMessage());
             }
         }) {
 
@@ -222,10 +452,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 JSONArray jsonArray = new JSONArray(data);
                 for (int j = 0; j < jsonArray.length(); j++) {
                     JSONObject jsonObject = jsonArray.getJSONObject(j);
-                    LatLng latLng = new LatLng(jsonObject.getDouble("lat"),
-                            jsonObject.getDouble("lng"));
+                    double lat = jsonObject.getDouble("lat");
+                    double lng = jsonObject.getDouble("lng");
+                    LatLng latLng = new LatLng(lat, lng);
 
-                    if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 10)) {
+                    if (PolyUtil.isLocationOnPath(latLng, decodedPath, true, 100)) {
                         speedList.add(jsonObject.getDouble("speed"));
                         switch (jsonObject.getString("vehicle")) {
                             case "Bike":

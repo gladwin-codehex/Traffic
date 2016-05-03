@@ -252,8 +252,7 @@ public class MainActivity extends AppCompatActivity implements
 
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(getApplicationContext(),
-                        "Network error - " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                System.out.println(error.getMessage());
             }
         }) {
 
