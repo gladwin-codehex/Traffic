@@ -50,6 +50,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -479,9 +481,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 if (!speedList.isEmpty())
                     avgSpeed = speed / speedList.size();
 
+                NumberFormat formatter = new DecimalFormat("#0.00");
+
                 if (avgSpeed == 0.0)
                     mSpeed = "-";
-                else mSpeed = String.valueOf(avgSpeed);
+                else mSpeed = formatter.format(avgSpeed);
 
                 trafficItemList.add(new TrafficItem(String.valueOf(++segment),
                         String.valueOf(bikeCount), String.valueOf(carCount),
