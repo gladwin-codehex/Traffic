@@ -218,7 +218,10 @@ public class RouteActivity extends AppCompatActivity {
                 int temp = 0;
                 boolean isDistance = true;
                 for (int j = 0; j < steps.length(); j++) {
-                    if (isDistance) {
+                    if (isDistance && (j + 1) == steps.length()) {
+                        mStepItemList.add(new StepItem(i, j));
+                        isDistance = false;
+                    } else if (isDistance) {
                         JSONObject step = steps.getJSONObject(j);
                         JSONObject distance = step.getJSONObject("distance");
                         int value = distance.getInt("value");
