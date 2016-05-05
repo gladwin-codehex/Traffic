@@ -6,7 +6,6 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -106,38 +105,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                     new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
                     Config.PERMISSION_REQUEST_CODE);
         }
-        try {
-            JSONObject jsonObject = new JSONObject(mDirection);
-            JSONArray jsonArray = jsonObject.getJSONArray("routes");
-            JSONObject route = jsonArray.getJSONObject(mPosition);
-            JSONObject polyline = route.getJSONObject("overview_polyline");
-            String points = polyline.getString("points");
-            List<LatLng> decodedPath = PolyUtil.decode(points);
-            mMap.addPolyline(new PolylineOptions().color(ContextCompat
-                    .getColor(getApplicationContext(), R.color.accent)).addAll(decodedPath));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        Geocoder geocoder = new Geocoder(this);
-        try {
-            double sourceLat, sourceLng, destLat, destLng;
-            List<Address> sourceAddress = geocoder.getFromLocationName(mSource, 1);
-            List<Address> destinationAddress = geocoder.getFromLocationName(mDestination, 1);
-            Address sAddress = sourceAddress.get(0);
-            sourceLat = sAddress.getLatitude();
-            sourceLng = sAddress.getLongitude();
-            Address dAddress = destinationAddress.get(0);
-            destLat = dAddress.getLatitude();
-            destLng = dAddress.getLongitude();
-            LatLng sourcePos = new LatLng(sourceLat, sourceLng);
-            LatLng destinationPos = new LatLng(destLat, destLng);
-            mMap.addMarker(new MarkerOptions().position(sourcePos).title(mSource));
-            mMap.addMarker(new MarkerOptions().position(destinationPos).title(mDestination));
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sourcePos, 11));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        drawOnMap();
     }
 
     @Override
@@ -247,6 +215,42 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             showAlertGPS();
     }
 
+    /**
+     * Draw poly lines and markers on the map
+     */
+    private void drawOnMap() {
+        try {
+            JSONObject jsonObject = new JSONObject(mDirection);
+            JSONArray jsonArray = jsonObject.getJSONArray("routes");
+            JSONObject route = jsonArray.getJSONObject(mPosition);
+            JSONObject polyline = route.getJSONObject("overview_polyline");
+            String points = polyline.getString("points");
+            List<LatLng> decodedPath = PolyUtil.decode(points);
+            mMap.addPolyline(new PolylineOptions().color(ContextCompat
+                    .getColor(getApplicationContext(), R.color.accent)).addAll(decodedPath));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        Geocoder geocoder = new Geocoder(this);
+        try {
+            double sourceLat, sourceLng, destLat, destLng;
+            List<Address> sourceAddress = geocoder.getFromLocationName(mSource, 1);
+            List<Address> destinationAddress = geocoder.getFromLocationName(mDestination, 1);
+            Address sAddress = sourceAddress.get(0);
+            sourceLat = sAddress.getLatitude();
+            sourceLng = sAddress.getLongitude();
+            Address dAddress = destinationAddress.get(0);
+            destLat = dAddress.getLatitude();
+            destLng = dAddress.getLongitude();
+            LatLng sourcePos = new LatLng(sourceLat, sourceLng);
+            LatLng destinationPos = new LatLng(destLat, destLng);
+            mMap.addMarker(new MarkerOptions().position(sourcePos).title(mSource));
+            mMap.addMarker(new MarkerOptions().position(destinationPos).title(mDestination));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * Initializes and implements location request object.
@@ -593,6 +597,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             JSONObject polyline = polyObject.getJSONObject("polyline");
                             String point = polyline.getString("points");
                             List<LatLng> decodedPath = PolyUtil.decode(point);
+                            mMap.clear();
+                            drawOnMap();
                             mMap.addPolyline(new PolylineOptions().color(ContextCompat
                                     .getColor(getApplicationContext(), R.color.blue))
                                     .addAll(decodedPath));
