@@ -59,6 +59,7 @@ import java.util.Map;
 
 import in.codehex.traffic.app.AppController;
 import in.codehex.traffic.app.Config;
+import in.codehex.traffic.app.ItemClickListener;
 import in.codehex.traffic.model.TrafficItem;
 import in.codehex.traffic.model.VehicleItem;
 
@@ -72,6 +73,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     List<VehicleItem> mVehicleItemList;
     GoogleApiClient mGoogleApiClient;
     Location location;
+    GoogleMap mMap;
     LocationRequest mLocationRequest;
     double mLat, mLng;
     List<TrafficItem> trafficItemList;
@@ -92,10 +94,11 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     @Override
     public void onMapReady(GoogleMap map) {
+        mMap = map;
         if (ContextCompat.checkSelfPermission(getApplicationContext(),
                 android.Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED) {
-            map.setMyLocationEnabled(true);
+            mMap.setMyLocationEnabled(true);
         } else if (ContextCompat.checkSelfPermission(getApplicationContext(),
                 android.Manifest.permission.ACCESS_FINE_LOCATION) !=
                 PackageManager.PERMISSION_GRANTED) {
@@ -110,7 +113,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             JSONObject polyline = route.getJSONObject("overview_polyline");
             String points = polyline.getString("points");
             List<LatLng> decodedPath = PolyUtil.decode(points);
-            map.addPolyline(new PolylineOptions().color(ContextCompat
+            mMap.addPolyline(new PolylineOptions().color(ContextCompat
                     .getColor(getApplicationContext(), R.color.accent)).addAll(decodedPath));
         } catch (JSONException e) {
             e.printStackTrace();
@@ -129,9 +132,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             destLng = dAddress.getLongitude();
             LatLng sourcePos = new LatLng(sourceLat, sourceLng);
             LatLng destinationPos = new LatLng(destLat, destLng);
-            map.addMarker(new MarkerOptions().position(sourcePos).title(mSource));
-            map.addMarker(new MarkerOptions().position(destinationPos).title(mDestination));
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(sourcePos, 11));
+            mMap.addMarker(new MarkerOptions().position(sourcePos).title(mSource));
+            mMap.addMarker(new MarkerOptions().position(destinationPos).title(mDestination));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sourcePos, 11));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -523,8 +526,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     /**
      * An view holder for the traffic data item.
      */
-    private class MapRecyclerViewHolder extends RecyclerView.ViewHolder {
+    private class MapRecyclerViewHolder extends RecyclerView.ViewHolder
+            implements View.OnClickListener {
         public TextView textSegment, textBike, textCar, textTruck, textSpeed;
+        private ItemClickListener itemClickListener;
 
         public MapRecyclerViewHolder(View view) {
             super(view);
@@ -533,6 +538,16 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             textCar = (TextView) view.findViewById(R.id.car);
             textTruck = (TextView) view.findViewById(R.id.truck);
             textSpeed = (TextView) view.findViewById(R.id.speed);
+            view.setOnClickListener(this);
+        }
+
+        public void setClickListener(ItemClickListener itemClickListener) {
+            this.itemClickListener = itemClickListener;
+        }
+
+        @Override
+        public void onClick(View view) {
+            itemClickListener.onClick(view, getAdapterPosition(), false);
         }
     }
 
@@ -563,6 +578,29 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             holder.textCar.setText(trafficItem.getCar());
             holder.textTruck.setText(trafficItem.getTruck());
             holder.textSpeed.setText(trafficItem.getSpeed());
+            holder.setClickListener(new ItemClickListener() {
+                @Override
+                public void onClick(View view, int position, boolean isLongClick) {
+                    if (position != 0)
+                        try {
+                            JSONObject direction = new JSONObject(mDirection);
+                            JSONArray array = direction.getJSONArray("routes");
+                            JSONObject routes = array.getJSONObject(mPosition);
+                            JSONArray legs = routes.getJSONArray("legs");
+                            JSONObject object = legs.getJSONObject(0);
+                            JSONArray steps = object.getJSONArray("steps");
+                            JSONObject polyObject = steps.getJSONObject(position - 1);
+                            JSONObject polyline = polyObject.getJSONObject("polyline");
+                            String point = polyline.getString("points");
+                            List<LatLng> decodedPath = PolyUtil.decode(point);
+                            mMap.addPolyline(new PolylineOptions().color(ContextCompat
+                                    .getColor(getApplicationContext(), R.color.blue))
+                                    .addAll(decodedPath));
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                }
+            });
         }
 
         @Override
